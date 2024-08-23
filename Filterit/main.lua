@@ -68,7 +68,7 @@ chatFrame:SetResizable(false)
 local inputBox = CreateFrame("EditBox", filterIT .. "InputBox", frame, "InputBoxTemplate")
 inputBox:SetWidth(390)
 inputBox:SetHeight(20)
-inputBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 52, -13)
+inputBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 70, -5)
 inputBox:SetAutoFocus(false)
 inputBox:SetFontObject(ChatFontNormal)
 inputBox:SetScript(
@@ -78,12 +78,30 @@ inputBox:SetScript(
     end
 )
 
+local inputBox2 = CreateFrame("EditBox", filterIT .. "InputBox2", frame, "InputBoxTemplate")
+inputBox2:SetWidth(390)
+inputBox2:SetHeight(20)
+inputBox2:SetPoint("TOPLEFT", frame, "TOPLEFT", 70, -25)
+inputBox2:SetAutoFocus(false)
+inputBox2:SetFontObject(ChatFontNormal)
+inputBox2:SetScript(
+    "OnEnterPressed",
+    function(self)
+        self:ClearFocus()
+    end
+)
 
 
--- Create the label "Filter:"
+
+-- Create the label "Include:"
 local filterLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-filterLabel:SetPoint("BOTTOMLEFT", inputBox, "BOTTOMLEFT", -47, 4)
-filterLabel:SetText("Filter:")
+filterLabel:SetPoint("BOTTOMLEFT", inputBox, "BOTTOMLEFT", -60, 4)
+filterLabel:SetText("Include:")
+
+-- Create the label "Ignore:"
+local filterLabel2 = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+filterLabel2:SetPoint("BOTTOMLEFT", inputBox2, "BOTTOMLEFT", -60, 4)
+filterLabel2:SetText("Ignore:")
 
 -- Create a table to store message frames
 local messageFrames = {}
@@ -99,6 +117,7 @@ local function OnEvent(self, event, ...)
         -- Search string, lets go for this madness; Edit: I was coding this for like 4 hours
         local message, playerName, _, channelName = ...
         local searchString = inputBox:GetText()
+        local ignoreString = inputBox2:GetText()
         
         -- Reset numMatches and hide label if search string has changed or is empty
         if searchString ~= prevSearchString or searchString == "" then
@@ -116,6 +135,15 @@ local function OnEvent(self, event, ...)
                 table.insert(searchWords, string.lower(word))
             end
             table.insert(searchGroups, searchWords)
+        end
+
+        local ignoreGroups = {}
+        for group in string.gmatch(ignoreString, "[^&]+") do
+            local ignoreWords = {}
+            for word in string.gmatch(group, "%S+") do
+                table.insert(ignoreWords, string.lower(word))
+            end
+            table.insert(ignoreGroups, ignoreWords)
         end
         
         -- Check if any of the search groups match the message
@@ -139,11 +167,17 @@ local function OnEvent(self, event, ...)
         end
         
 
-        -- Update label with number of matches
-        if searchString ~= "" then
-            if match == true then
-                numMatches = numMatches + 1
+        if searchString ~= "" and match == true then
+            for _, ignoreWords in ipairs(ignoreGroups) do
+                for _, word in ipairs(ignoreWords) do
+                    if string.find(string.lower(message), word, 1, true) then
+                        return
+                    end
+                end
             end
+            
+            -- Update label with number of matches
+            numMatches = numMatches + 1
         end
 
         if numMatches > 0 then
